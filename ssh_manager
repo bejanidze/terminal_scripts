@@ -37,82 +37,86 @@ if [ ! -s $instances_file ] ; then
     echo -e "\e[92mInstance appended successfully.\e[0m"
 fi
 
-instances=$(cat $instances_file)
-i=1
-echo -e "\e[92m\e[4m0\e[24m  :  append new instance\e[0m"
-
-while IFS= read -r line
+while true
 do
-  IFS='|'
-  read -a  instance <<< "$line"
-  echo -e "\e[4m${i}\e[24m  :  ${instance[0]}"
-  ((i=i+1))
-done < <(printf "%s\n" "$instances")
+    instances=$(cat $instances_file)
+    i=1
+    echo -e "\e[92m\e[4m0\e[24m  :  append new instance\e[0m"
 
-echo -e "Choose an instance by index(blank if exit): \c"
-read server_id
+    while IFS= read -r line
+    do
+    IFS='|'
+    read -a  instance <<< "$line"
+    echo -e "\e[4m${i}\e[24m  :  ${instance[0]}"
+    ((i=i+1))
+    done < <(printf "%s\n" "$instances")
 
-if [ -z "$server_id" ] ; then
-  exit 1
-fi
+    echo -e "Choose an instance by index(blank if exit): \c"
+    read server_id
 
-if (( server_id > i )) ; then
-  echo -e "\e[91mInstance on this index doesn't exists, try again.\e[0m"
-  exit 1
-fi
+    if [ -z "$server_id" ] ; then
+    exit 1
+    fi
 
-if [[ $server_id = 0 ]] ; then
-    echo -e "Enter name of instance: \c"
-    read instance_name
-    echo -e "Enter pem file name(blank if not required): \c"
-    read pem_file
-    echo "Make sure that you have $pem_file in $ssh_manager_dir/pems"
-    echo -e "Enter User name: \c"
-    read user_name
-    echo -e "Enter IP address: \c"
-    read ip_address
-    if [ ! -z "$port" ] ; then
-        echo "$instance_name|ssh $user_name@$ip_address" >> $instances_file
-    else
-        if [ ! -f $ssh_manager_dir/pems/$pem_file ] ; then
-            echo -e "\e[91m\e[5mWARNING\e[25m : $pem_file doesn't exists in $ssh_manager_dir/pems folder.\e[0m"
+    if (( server_id > i )) ; then
+    echo -e "\e[91mInstance on this index doesn't exists, try again.\e[0m"
+    exit 1
+    fi
+
+    if [[ $server_id = 0 ]] ; then
+        echo -e "Enter name of instance: \c"
+        read instance_name
+        echo -e "Enter pem file name(blank if not required): \c"
+        read pem_file
+        echo "Make sure that you have $pem_file in $ssh_manager_dir/pems"
+        echo -e "Enter User name: \c"
+        read user_name
+        echo -e "Enter IP address: \c"
+        read ip_address
+        if [ ! -z "$port" ] ; then
+            echo "$instance_name|ssh $user_name@$ip_address" >> $instances_file
         else
-            permission=$(stat -c %a $ssh_manager_dir/pems/$pem_file)
-            if [ ! $permission = "400" ] ; then
-                echo -e "\e[91m\e[5mWARNING\e[25m : changing $pem_file permission to 400.\e[0m"
-                chmod 400 $ssh_manager_dir/pems/$pem_file
-            fi 
+            if [ ! -f $ssh_manager_dir/pems/$pem_file ] ; then
+                echo -e "\e[91m\e[5mWARNING\e[25m : $pem_file doesn't exists in $ssh_manager_dir/pems folder.\e[0m"
+            else
+                permission=$(stat -c %a $ssh_manager_dir/pems/$pem_file)
+                if [ ! $permission = "400" ] ; then
+                    echo -e "\e[91m\e[5mWARNING\e[25m : changing $pem_file permission to 400.\e[0m"
+                    chmod 400 $ssh_manager_dir/pems/$pem_file
+                fi 
+            fi
+            echo "$instance_name|ssh -i $ssh_manager_dir/pems/$pem_file $user_name@$ip_address" >> $instances_file
         fi
-        echo "$instance_name|ssh -i $ssh_manager_dir/pems/$pem_file $user_name@$ip_address" >> $instances_file
-    fi
-    echo -e "\e[92mInstance appended successfully.\e[0m"
-else
-
-  echo -e "With \e[7m-L\e[27m [y/N]: \c"
-  read with_L
-
-  if [[ $with_L = y  ]] ; then
-    echo -e "choose port (default 12345): \c"
-    read port
-
-    if [ -z "$port" ] ; then
-      read -a to_ssh <<<  $(sed -n ${server_id}p <<< "$instances")
-      echo -e "\e[92mConnecting to ${to_ssh[0]} with -L 12345\e[5m...\e[25m\e[0m"
-      bash -c "${to_ssh[1]} -L 12345:localhost:12345"
-      exit 1
-
+        echo -e "\e[92mInstance appended successfully.\e[0m"
     else
-      read -a to_ssh <<<  $(sed -n ${server_id}p <<< "$instances")
-      echo -e "\e[92mConnecting to ${to_ssh[0]} with -L $port\e[5m...\e[25m\e[0m"
-      bash -c "${to_ssh[1]} -L $port:localhost:$port"
-      exit 1
+
+    echo -e "With \e[7m-L\e[27m [y/N]: \c"
+    read with_L
+
+    if [[ $with_L = y  ]] ; then
+        echo -e "choose port (default 12345): \c"
+        read port
+
+        if [ -z "$port" ] ; then
+        read -a to_ssh <<<  $(sed -n ${server_id}p <<< "$instances")
+        echo -e "\e[92mConnecting to ${to_ssh[0]} with -L 12345\e[5m...\e[25m\e[0m"
+        bash -c "${to_ssh[1]} -L 12345:localhost:12345"
+        exit 1
+
+        else
+        read -a to_ssh <<<  $(sed -n ${server_id}p <<< "$instances")
+        echo -e "\e[92mConnecting to ${to_ssh[0]} with -L $port\e[5m...\e[25m\e[0m"
+        bash -c "${to_ssh[1]} -L $port:localhost:$port"
+        exit 1
+
+        fi
 
     fi
 
-  fi
-
-  read -a to_ssh <<<  $(sed -n ${server_id}p <<< "$instances")
-  echo -e "\e[92mConnecting to ${to_ssh[0]}\e[5m...\e[25m\e[0m"
-  bash -c ${to_ssh[1]}
-  
-fi
+    read -a to_ssh <<<  $(sed -n ${server_id}p <<< "$instances")
+    echo -e "\e[92mConnecting to ${to_ssh[0]}\e[5m...\e[25m\e[0m"
+    bash -c ${to_ssh[1]}
+    exit 1
+    
+    fi
+done
