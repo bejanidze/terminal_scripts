@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ssh_manager_dir="$HOME/.ssh/ssh_manager"
-instances_file="$HOME/.ssh/ssh_manager/instances"
+instances_file="$ssh_manager_dir/instances"
 
 if [ ! -f $instances_file ]; then
     echo "Instances does not exist."
@@ -25,6 +25,12 @@ if [ ! -s $instances_file ] ; then
     else
         if [ ! -f $ssh_manager_dir/pems/$pem_file ] ; then
             echo -e "\e[91m\e[5mWARNING\e[25m : $pem_file doesn't exists in $ssh_manager_dir/pems folder.\e[0m"
+        else
+            permission=$(stat -c %a $ssh_manager_dir/pems/$pem_file)
+            if [ ! $permission = "400" ] ; then
+                echo -e "\e[91m\e[5mWARNING\e[25m : changing $pem_file permission to 400.\e[0m"
+                chmod 400 $ssh_manager_dir/pems/$pem_file
+            fi 
         fi
         echo "$instance_name|ssh -i $ssh_manager_dir/pems/$pem_file $user_name@$ip_address" >> $instances_file
     fi
@@ -43,7 +49,7 @@ do
   ((i=i+1))
 done < <(printf "%s\n" "$instances")
 
-echo -e "Choose an instance by index(blank if exit):\c"
+echo -e "Choose an instance by index(blank if exit): \c"
 read server_id
 
 if [ -z "$server_id" ] ; then
@@ -55,11 +61,12 @@ if (( server_id > i )) ; then
   exit 1
 fi
 
-if [[ $server_id = 0 ]] ; then 
+if [[ $server_id = 0 ]] ; then
     echo -e "Enter name of instance: \c"
     read instance_name
     echo -e "Enter pem file name(blank if not required): \c"
     read pem_file
+    echo "Make sure that you have $pem_file in $ssh_manager_dir/pems"
     echo -e "Enter User name: \c"
     read user_name
     echo -e "Enter IP address: \c"
@@ -69,6 +76,12 @@ if [[ $server_id = 0 ]] ; then
     else
         if [ ! -f $ssh_manager_dir/pems/$pem_file ] ; then
             echo -e "\e[91m\e[5mWARNING\e[25m : $pem_file doesn't exists in $ssh_manager_dir/pems folder.\e[0m"
+        else
+            permission=$(stat -c %a $ssh_manager_dir/pems/$pem_file)
+            if [ ! $permission = "400" ] ; then
+                echo -e "\e[91m\e[5mWARNING\e[25m : changing $pem_file permission to 400.\e[0m"
+                chmod 400 $ssh_manager_dir/pems/$pem_file
+            fi 
         fi
         echo "$instance_name|ssh -i $ssh_manager_dir/pems/$pem_file $user_name@$ip_address" >> $instances_file
     fi
